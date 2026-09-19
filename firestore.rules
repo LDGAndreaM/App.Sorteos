@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function raffleData(raffleId) {
+      return get(/databases/$(database)/documents/raffles/$(raffleId)).data;
+    }
+
+    function isMember(raffleId) {
+      return isSignedIn() && request.auth.uid in raffleData(raffleId).memberIds;
+    }
+
+    function isCreator(raffleId) {
+      return isSignedIn() && raffleData(raffleId).createdBy == request.auth.uid;
+    }
+
+    // Profiles: each student can only create/edit their own profile document.
+    match /profiles/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /raffles/{raffleId} {
+      // Any signed-in user can read raffle metadata so they can look one up by invite code
+      // before joining. Ticket details are protected separately below.
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid];
+
+      // Two ways to update a raffle:
+      // 1) The creator can change anything (settings, closing/reopening, etc).
+      // 2) Any signed-in user can join by adding ONLY their own uid to memberIds
+      //    (and their own entry to members) — nothing else may change.
+      allow update: if isSignedIn() && (
+        isCreator(raffleId) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'updatedAt']) &&
+          request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+          request.resource.data.memberIds.hasAll([request.auth.uid])
+        )
+      );
+
+      allow delete: if isCreator(raffleId);
+
+      match /tickets/{ticketNumber} {
+        // Only members of the raffle (students who joined with the invite code) can see
+        // or change buyer/payment info.
+        allow read, write: if isMember(raffleId);
+      }
+    }
+  }
+}
