@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { updateProfileName } from '../services/profile';
 import { colors, radius, spacing } from '../theme';
+import { notify } from '../utils/alert';
 
 export default function ProfileScreen() {
   const { profile, uid, refreshProfile } = useAuth();
@@ -14,16 +15,16 @@ export default function ProfileScreen() {
   const handleSave = async () => {
     if (!uid) return;
     if (name.trim().length < 2) {
-      Alert.alert('Nombre inválido', 'Escribe al menos 2 caracteres.');
+      notify('Nombre inválido', 'Escribe al menos 2 caracteres.');
       return;
     }
     setSaving(true);
     try {
       await updateProfileName(uid, name);
       await refreshProfile();
-      Alert.alert('Listo', 'Tu nombre se actualizó.');
+      notify('Listo', 'Tu nombre se actualizó.');
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      notify('Error', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
       setSaving(false);
     }

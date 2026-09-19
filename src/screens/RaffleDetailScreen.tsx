@@ -3,7 +3,6 @@ import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Share,
   StyleSheet,
@@ -22,6 +21,7 @@ import { exportRaffleToExcel } from '../services/exportRaffle';
 import { closeRaffle, reopenRaffle, subscribeToRaffle, subscribeToTickets } from '../services/raffles';
 import { colors, radius, spacing } from '../theme';
 import type { Raffle, Ticket } from '../types';
+import { confirm, notify } from '../utils/alert';
 import { computeSellerBreakdown, computeTotals } from '../utils/stats';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RaffleDetail'>;
@@ -47,12 +47,12 @@ export default function RaffleDetailScreen({ route, navigation }: Props) {
       (error) => {
         console.error('Error al cargar la rifa', error);
         setLoading(false);
-        Alert.alert('No se pudo cargar la rifa', error.message);
+        notify('No se pudo cargar la rifa', error.message);
       }
     );
     const unsubscribeTickets = subscribeToTickets(raffleId, setTickets, (error) => {
       console.error('Error al cargar los boletos', error);
-      Alert.alert('No se pudieron cargar los boletos', error.message);
+      notify('No se pudieron cargar los boletos', error.message);
     });
     return () => {
       unsubscribeRaffle();
@@ -94,7 +94,7 @@ export default function RaffleDetailScreen({ route, navigation }: Props) {
       // No hay hoja para compartir disponible (típico en navegadores de escritorio):
       // copiamos el código al portapapeles como respaldo.
       await Clipboard.setStringAsync(raffle.inviteCode);
-      Alert.alert('Código copiado', `Se copió "${raffle.inviteCode}" al portapapeles.`);
+      notify('Código copiado', `Se copió "${raffle.inviteCode}" al portapapeles.`);
     }
   };
 
@@ -103,41 +103,36 @@ export default function RaffleDetailScreen({ route, navigation }: Props) {
     try {
       await exportRaffleToExcel(raffle, tickets);
     } catch (error) {
-      Alert.alert('No se pudo exportar', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      notify('No se pudo exportar', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
       setExporting(false);
     }
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     const action = isClosed ? 'reabrir' : 'cerrar';
-    Alert.alert(
+    const accepted = await confirm(
       isClosed ? 'Reabrir rifa' : 'Cerrar rifa',
       isClosed
         ? 'La rifa volverá a aparecer en tus rifas activas.'
         : 'La rifa se moverá al historial. Podrás reabrirla después si lo necesitas.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: isClosed ? 'Reabrir' : 'Cerrar rifa',
-          style: isClosed ? 'default' : 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              if (isClosed) {
-                await reopenRaffle(raffle.id);
-              } else {
-                await closeRaffle(raffle.id);
-              }
-            } catch (error) {
-              Alert.alert('Error', error instanceof Error ? error.message : `No se pudo ${action} la rifa.`);
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ]
+      isClosed ? 'Reabrir' : 'Cerrar rifa',
+      { destructive: !isClosed }
     );
+    if (!accepted) return;
+
+    setBusy(true);
+    try {
+      if (isClosed) {
+        await reopenRaffle(raffle.id);
+      } else {
+        await closeRaffle(raffle.id);
+      }
+    } catch (error) {
+      notify('Error', error instanceof Error ? error.message : `No se pudo ${action} la rifa.`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

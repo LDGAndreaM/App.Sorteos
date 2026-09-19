@@ -3,7 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import { createRaffle } from '../services/raffles';
 import { colors, radius, spacing } from '../theme';
+import { notify } from '../utils/alert';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CreateRaffle'>;
 
@@ -38,17 +38,17 @@ export default function CreateRaffleScreen() {
     if (!uid || !profile) return;
 
     if (name.trim().length < 2) {
-      Alert.alert('Falta el nombre', 'Ponle un nombre a tu rifa.');
+      notify('Falta el nombre', 'Ponle un nombre a tu rifa.');
       return;
     }
     const price = Number(ticketPrice);
     if (!price || price <= 0) {
-      Alert.alert('Precio inválido', 'Escribe el costo del boleto (mayor a 0).');
+      notify('Precio inválido', 'Escribe el costo del boleto (mayor a 0).');
       return;
     }
     const count = Math.round(Number(ticketCount));
     if (!count || count <= 0 || count > 10000) {
-      Alert.alert('Cantidad inválida', 'Escribe cuántos números tendrá la rifa (entre 1 y 10,000).');
+      notify('Cantidad inválida', 'Escribe cuántos números tendrá la rifa (entre 1 y 10,000).');
       return;
     }
 
@@ -68,7 +68,7 @@ export default function CreateRaffleScreen() {
       );
       navigation.replace('RaffleDetail', { raffleId });
     } catch (error) {
-      Alert.alert('No se pudo crear la rifa', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      notify('No se pudo crear la rifa', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -14,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing } from '../theme';
+import { notify } from '../utils/alert';
 
 export default function OnboardingScreen() {
   const { setProfileName, isFirebaseConfigured, authReady } = useAuth();
@@ -22,14 +22,14 @@ export default function OnboardingScreen() {
 
   const handleContinue = async () => {
     if (name.trim().length < 2) {
-      Alert.alert('Falta tu nombre', 'Escribe tu nombre o apodo para identificarte como vendedor.');
+      notify('Falta tu nombre', 'Escribe tu nombre o apodo para identificarte como vendedor.');
       return;
     }
     setSaving(true);
     try {
       await setProfileName(name);
     } catch (error) {
-      Alert.alert('No se pudo guardar', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      notify('No se pudo guardar', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
       setSaving(false);
     }

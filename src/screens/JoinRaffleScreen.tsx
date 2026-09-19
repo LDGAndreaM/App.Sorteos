@@ -3,7 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -18,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import { joinRaffleByCode } from '../services/raffles';
 import { colors, radius, spacing } from '../theme';
+import { notify } from '../utils/alert';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'JoinRaffle'>;
 
@@ -30,7 +30,7 @@ export default function JoinRaffleScreen() {
   const handleJoin = async () => {
     if (!uid || !profile) return;
     if (code.trim().length < 4) {
-      Alert.alert('Código inválido', 'Escribe el código de invitación de la rifa.');
+      notify('Código inválido', 'Escribe el código de invitación de la rifa.');
       return;
     }
     setLoading(true);
@@ -38,7 +38,7 @@ export default function JoinRaffleScreen() {
       const raffle = await joinRaffleByCode(code, uid, profile.name);
       navigation.replace('RaffleDetail', { raffleId: raffle.id });
     } catch (error) {
-      Alert.alert('No se pudo unir', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      notify('No se pudo unir', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
       setLoading(false);
     }

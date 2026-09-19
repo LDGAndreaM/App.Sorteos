@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,9 +15,17 @@ import {
 import { TicketUnavailableError, claimTicket, releaseTicket, updateTicket } from '../services/raffles';
 import { colors, radius, spacing } from '../theme';
 import type { Raffle, Ticket, TicketStatus } from '../types';
+import { confirm, notify } from '../utils/alert';
 import { formatCurrency, formatTicketNumber } from '../utils/format';
 
 type PaymentOption = Extract<TicketStatus, 'paid' | 'partial' | 'pending'>;
+
+const STATUS_LABELS: Record<TicketStatus, string> = {
+  available: 'Disponible',
+  pending: 'Pendiente de pago',
+  partial: 'Abonado',
+  paid: 'Pagado completo',
+};
 
 export default function TicketModal({
   visible,
@@ -42,6 +49,10 @@ export default function TicketModal({
   const [saving, setSaving] = useState(false);
 
   const isAvailable = ticket?.status === 'available';
+  const isOwner = !!ticket && (ticket.soldByUid === actorUid || raffle.createdBy === actorUid);
+  // Anyone can claim an open ticket; once it's sold, only the seller (or the
+  // raffle's creator, as an admin override) can change it.
+  const canEdit = isAvailable || isOwner;
 
   useEffect(() => {
     if (!ticket) return;
@@ -60,7 +71,7 @@ export default function TicketModal({
 
   const handleSave = async () => {
     if (buyerName.trim().length < 2) {
-      Alert.alert('Falta el nombre', 'Escribe el nombre de quien compra el boleto.');
+      notify('Falta el nombre', 'Escribe el nombre de quien compra el boleto.');
       return;
     }
 
@@ -70,11 +81,11 @@ export default function TicketModal({
     } else if (paymentOption === 'partial') {
       const parsed = Number(amount);
       if (!parsed || parsed <= 0) {
-        Alert.alert('Monto inválido', 'Escribe cuánto ha abonado.');
+        notify('Monto inválido', 'Escribe cuánto ha abonado.');
         return;
       }
       if (parsed >= raffle.ticketPrice) {
-        Alert.alert('Monto inválido', 'Si ya cubrió el costo completo, usa "Pagó completo".');
+        notify('Monto inválido', 'Si ya cubrió el costo completo, usa "Pagó completo".');
         return;
       }
       amountPaid = parsed;
@@ -91,39 +102,34 @@ export default function TicketModal({
       onClose();
     } catch (error) {
       if (error instanceof TicketUnavailableError) {
-        Alert.alert('Boleto no disponible', error.message);
+        notify('Boleto no disponible', error.message);
         onClose();
       } else {
-        Alert.alert('No se pudo guardar', error instanceof Error ? error.message : 'Intenta de nuevo.');
+        notify('No se pudo guardar', error instanceof Error ? error.message : 'Intenta de nuevo.');
       }
     } finally {
       setSaving(false);
     }
   };
 
-  const handleRelease = () => {
-    Alert.alert(
+  const handleRelease = async () => {
+    const accepted = await confirm(
       'Liberar boleto',
       `¿Seguro que quieres liberar el boleto ${formatTicketNumber(ticket.number, raffle.numberDigits)}? Se marcará como disponible de nuevo.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Liberar',
-          style: 'destructive',
-          onPress: async () => {
-            setSaving(true);
-            try {
-              await releaseTicket(raffle.id, ticket.number, actorUid, actorName);
-              onClose();
-            } catch (error) {
-              Alert.alert('Error', error instanceof Error ? error.message : 'Intenta de nuevo.');
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ]
+      'Liberar',
+      { destructive: true }
     );
+    if (!accepted) return;
+
+    setSaving(true);
+    try {
+      await releaseTicket(raffle.id, ticket.number, actorUid, actorName);
+      onClose();
+    } catch (error) {
+      notify('Error', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -139,82 +145,105 @@ export default function TicketModal({
               <Text style={styles.soldBy}>Vendido por {ticket.soldByName}</Text>
             )}
 
-            <Text style={styles.label}>Nombre del comprador</Text>
-            <TextInput
-              style={styles.input}
-              value={buyerName}
-              onChangeText={setBuyerName}
-              placeholder="Nombre completo"
-              placeholderTextColor={colors.textMuted}
-              maxLength={60}
-            />
-
-            <Text style={styles.label}>WhatsApp (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={buyerWhatsapp}
-              onChangeText={setBuyerWhatsapp}
-              placeholder="10 dígitos"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="phone-pad"
-              maxLength={20}
-            />
-
-            <Text style={styles.label}>Estado de pago</Text>
-            <View style={styles.paymentOptions}>
-              <PaymentButton
-                label="Pagó completo"
-                active={paymentOption === 'paid'}
-                color={colors.success}
-                bg={colors.successBg}
-                onPress={() => setPaymentOption('paid')}
-              />
-              <PaymentButton
-                label="Abonó"
-                active={paymentOption === 'partial'}
-                color={colors.partial}
-                bg={colors.partialBg}
-                onPress={() => setPaymentOption('partial')}
-              />
-              <PaymentButton
-                label="Pendiente"
-                active={paymentOption === 'pending'}
-                color={colors.warning}
-                bg={colors.warningBg}
-                onPress={() => setPaymentOption('pending')}
-              />
-            </View>
-
-            {paymentOption === 'partial' && (
+            {canEdit ? (
               <>
-                <Text style={styles.label}>¿Cuánto ha abonado?</Text>
+                <Text style={styles.label}>Nombre del comprador</Text>
                 <TextInput
                   style={styles.input}
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder="$0"
+                  value={buyerName}
+                  onChangeText={setBuyerName}
+                  placeholder="Nombre completo"
                   placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
+                  maxLength={60}
                 />
+
+                <Text style={styles.label}>WhatsApp (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={buyerWhatsapp}
+                  onChangeText={setBuyerWhatsapp}
+                  placeholder="10 dígitos"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="phone-pad"
+                  maxLength={20}
+                />
+
+                <Text style={styles.label}>Estado de pago</Text>
+                <View style={styles.paymentOptions}>
+                  <PaymentButton
+                    label="Pagó completo"
+                    active={paymentOption === 'paid'}
+                    color={colors.success}
+                    bg={colors.successBg}
+                    onPress={() => setPaymentOption('paid')}
+                  />
+                  <PaymentButton
+                    label="Abonó"
+                    active={paymentOption === 'partial'}
+                    color={colors.partial}
+                    bg={colors.partialBg}
+                    onPress={() => setPaymentOption('partial')}
+                  />
+                  <PaymentButton
+                    label="Pendiente"
+                    active={paymentOption === 'pending'}
+                    color={colors.warning}
+                    bg={colors.warningBg}
+                    onPress={() => setPaymentOption('pending')}
+                  />
+                </View>
+
+                {paymentOption === 'partial' && (
+                  <>
+                    <Text style={styles.label}>¿Cuánto ha abonado?</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={amount}
+                      onChangeText={setAmount}
+                      placeholder="$0"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="numeric"
+                    />
+                  </>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && styles.disabled]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>
+                      {isAvailable ? 'Registrar venta' : 'Guardar cambios'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {!isAvailable && (
+                  <TouchableOpacity style={styles.releaseButton} onPress={handleRelease} disabled={saving}>
+                    <Text style={styles.releaseButtonText}>Liberar boleto</Text>
+                  </TouchableOpacity>
+                )}
               </>
-            )}
-
-            <TouchableOpacity style={[styles.saveButton, saving && styles.disabled]} onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>{isAvailable ? 'Registrar venta' : 'Guardar cambios'}</Text>
-              )}
-            </TouchableOpacity>
-
-            {!isAvailable && (
-              <TouchableOpacity style={styles.releaseButton} onPress={handleRelease} disabled={saving}>
-                <Text style={styles.releaseButtonText}>Liberar boleto</Text>
-              </TouchableOpacity>
+            ) : (
+              <View style={styles.readOnlyBlock}>
+                <ReadOnlyRow label="Comprador" value={ticket.buyerName || '—'} />
+                <ReadOnlyRow label="WhatsApp" value={ticket.buyerWhatsapp || '—'} />
+                <ReadOnlyRow label="Estado" value={STATUS_LABELS[ticket.status]} />
+                {ticket.status === 'partial' && (
+                  <ReadOnlyRow label="Ha abonado" value={formatCurrency(ticket.amountPaid)} />
+                )}
+                <Text style={styles.readOnlyNote}>
+                  Solo {ticket.soldByName ?? 'quien vendió este boleto'} o quien creó la rifa pueden
+                  modificarlo.
+                </Text>
+              </View>
             )}
 
             <TouchableOpacity style={styles.cancelButton} onPress={onClose} disabled={saving}>
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
+              <Text style={styles.cancelButtonText}>{canEdit ? 'Cancelar' : 'Cerrar'}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -246,6 +275,17 @@ function PaymentButton({
     >
       <Text style={[styles.paymentButtonText, { color: active ? color : colors.text }]}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+function ReadOnlyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.readOnlyRow}>
+      <Text style={styles.readOnlyLabel}>{label}</Text>
+      <Text style={styles.readOnlyValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -354,5 +394,34 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.6,
+  },
+  readOnlyBlock: {
+    marginTop: spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  readOnlyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  readOnlyLabel: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  readOnlyValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: spacing.md,
+  },
+  readOnlyNote: {
+    marginTop: spacing.sm,
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: 'italic',
   },
 });

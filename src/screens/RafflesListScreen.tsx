@@ -1,7 +1,7 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import RaffleCard from '../components/RaffleCard';
@@ -10,6 +10,7 @@ import { subscribeToUserRaffles } from '../services/raffles';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 import type { Raffle, RaffleStatus } from '../types';
+import { notify } from '../utils/alert';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,7 +33,7 @@ export default function RafflesListScreen({ status }: { status: RaffleStatus }) 
       (error) => {
         console.error('Error al cargar rifas', error);
         setLoading(false);
-        Alert.alert('No se pudieron cargar las rifas', error.message);
+        notify('No se pudieron cargar las rifas', error.message);
       }
     );
     return unsubscribe;

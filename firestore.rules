@@ -53,8 +53,20 @@ service cloud.firestore {
 
       match /tickets/{ticketNumber} {
         // Only members of the raffle (students who joined with the invite code) can see
-        // or change buyer/payment info.
-        allow read, write: if isMember(raffleId);
+        // buyer/payment info.
+        allow read: if isMember(raffleId);
+        allow create: if isMember(raffleId);
+
+        // Any member can claim an available ticket, but once it's sold only the
+        // seller who registered it (or the raffle's creator, as an admin override)
+        // can change or release it — mirrors the app's UI-level permission check.
+        allow update: if isMember(raffleId) && (
+          resource.data.status == 'available' ||
+          resource.data.soldByUid == request.auth.uid ||
+          isCreator(raffleId)
+        );
+
+        allow delete: if isCreator(raffleId);
       }
     }
   }
