@@ -1,5 +1,6 @@
 import { type FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import type { Auth } from 'firebase/auth';
+import { type Firestore, getFirestore } from 'firebase/firestore';
 
 import { createAuth } from './authPersistence';
 
@@ -12,10 +13,38 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-export const isFirebaseConfigured = Boolean(
+const hasConfigValues = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
 );
 
-export const firebaseApp: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = createAuth(firebaseApp);
-export const db = getFirestore(firebaseApp);
+let app: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
+
+// `initializeAuth`/`getAuth` validate the API key eagerly (synchronously, at call
+// time) and throw if it's missing or wrong — e.g. an empty or mistyped
+// EXPO_PUBLIC_FIREBASE_API_KEY. Since this file runs at module load, an uncaught
+// throw here would crash the whole app before React ever renders (a blank white
+// screen with no visible message). Guard the whole init so a bad/missing config
+// falls back to `isFirebaseConfigured = false` instead, which the UI shows as a
+// normal "configure Firebase" screen.
+if (hasConfigValues) {
+  try {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    authInstance = createAuth(app);
+    dbInstance = getFirestore(app);
+  } catch (error) {
+    console.error(
+      'No se pudo inicializar Firebase. Revisa tus variables EXPO_PUBLIC_FIREBASE_* (en .env o en las Environment Variables de Vercel).',
+      error
+    );
+    app = null;
+    authInstance = null;
+    dbInstance = null;
+  }
+}
+
+export const isFirebaseConfigured = app !== null;
+export const firebaseApp = app as FirebaseApp;
+export const auth = authInstance as Auth;
+export const db = dbInstance as Firestore;
