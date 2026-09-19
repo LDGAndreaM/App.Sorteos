@@ -7,7 +7,9 @@ export type MainTabParamList = {
 };
 
 export type RootStackParamList = {
-  Onboarding: undefined;
+  ConfigMissing: undefined;
+  Auth: undefined;
+  ProfileSetup: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
   CreateRaffle: undefined;
   JoinRaffle: undefined;

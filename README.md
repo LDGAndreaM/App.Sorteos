@@ -9,9 +9,10 @@ lista final para el sorteo.
 
 - **Crear una rifa**: nombre, descripción, premio, cantidad de números y
   costo del boleto.
-- **Vendedores con nombre propio**: cada estudiante entra con su nombre (sin
-  contraseña) y queda registrado como el vendedor de cada boleto que
-  registre.
+- **Cuenta con correo o Google**: cada estudiante crea su cuenta con correo y
+  contraseña (o inicia sesión con Google, en la versión web), y elige el
+  nombre con el que aparecerá como vendedor. Así solo quien tiene cuenta
+  puede entrar, y cada boleto queda ligado a esa cuenta.
 - **Sincronización en tiempo real**: todos los que se unen a una rifa con su
   código de invitación ven, desde su propio celular, qué números están
   disponibles al instante — no se puede vender el mismo número dos veces.
@@ -29,7 +30,8 @@ lista final para el sorteo.
 - [Expo](https://expo.dev) SDK 57 + React Native + TypeScript
 - [React Navigation](https://reactnavigation.org) (stack + bottom tabs)
 - [Firebase](https://firebase.google.com): Firestore (base de datos en
-  tiempo real) + Authentication (sesión anónima por dispositivo)
+  tiempo real) + Authentication (correo/contraseña, y Google en la versión
+  web)
 - [SheetJS (xlsx)](https://sheetjs.com) + `expo-file-system` / `expo-sharing`
   para exportar y compartir el Excel
 
@@ -44,8 +46,10 @@ todos viendo la misma información al instante.
 2. En **Compilación → Firestore Database**, crea una base de datos (modo
    producción, la región más cercana a tu escuela).
 3. En **Compilación → Authentication → Sign-in method**, habilita el
-   proveedor **Anónimo**. No se piden contraseñas: solo se usa para que cada
-   celular tenga una identidad y sepamos quién vendió cada boleto.
+   proveedor **Correo electrónico/contraseña**. Si además quieres que se
+   pueda entrar con Google (funciona en la versión web), habilita también el
+   proveedor **Google** — no necesitas configurar nada más para que funcione
+   en la web, Firebase se encarga de todo automáticamente.
 4. En **Configuración del proyecto → Tus apps**, agrega una app **Web** (el
    ícono `</>`) — aunque la app corra en el celular, el SDK de Firebase para
    Expo/React Native usa la configuración de app web. Copia el objeto
@@ -93,6 +97,16 @@ todos viendo la misma información al instante.
 npm install
 npm run start
 ```
+
+> **Sobre "Continuar con Google"**: el botón de Google solo aparece en la
+> versión web (Vercel) — ahí funciona sin configuración extra, en cuanto
+> habilites el proveedor Google en Firebase (paso 3 arriba). En Expo Go no
+> aparece: iniciar sesión con Google desde una app nativa necesita
+> credenciales OAuth por plataforma y un build de desarrollo con
+> [EAS](https://docs.expo.dev/eas/) (no funciona de forma confiable dentro
+> de Expo Go), así que por ahora en el celular se usa correo y contraseña.
+> Si más adelante quieres agregarlo, `src/services/googleAuth.ts` tiene el
+> lugar exacto para hacerlo.
 
 Escanea el código QR con la app **Expo Go** (Android/iOS) o presiona `a` /
 `i` en la terminal para abrir un emulador. Todos los estudiantes deben
@@ -151,8 +165,9 @@ Firebase.
 
 ## Cómo lo usan los estudiantes
 
-1. Al abrir la app por primera vez, cada quien escribe su nombre (queda
-   guardado en su celular).
+1. Al abrir la app por primera vez, cada quien crea su cuenta con correo y
+   contraseña (o entra con Google, en la versión web), y luego escribe el
+   nombre con el que quiere aparecer como vendedor.
 2. Uno de ellos crea la rifa desde la pestaña **Rifas activas → + Nueva
    rifa**, indicando cantidad de números, costo del boleto y premio. La app
    genera un **código de invitación** de 6 caracteres.
@@ -161,7 +176,9 @@ Firebase.
    real.
 4. Para vender un boleto, tocan un número disponible, capturan nombre y
    WhatsApp del comprador, y eligen **Pagó completo**, **Abonó** (con el
-   monto) o **Pendiente de pago**.
+   monto) o **Pendiente de pago**. Una vez vendido, solo quien lo vendió (o
+   quien creó la rifa) puede editarlo después — los demás lo ven en modo de
+   solo lectura, con el nombre de quién lo vendió.
 5. Cuando se agote la rifa o llegue el día del sorteo, quien la creó puede
    **Cerrar rifa** para moverla al historial, y **Exportar a Excel** para
    subir la lista de números y nombres a la app de sorteos que usen para
@@ -175,7 +192,7 @@ src/
                 authPersistence.ts / .web.ts eligen cómo Auth guarda la
                 sesión según la plataforma (AsyncStorage en la app,
                 localStorage en la web)
-  context/      AuthContext (sesión anónima + perfil del vendedor)
+  context/      AuthContext (sesión de correo/Google + perfil del vendedor)
   navigation/   Stack raíz y tabs (Activas / Historial / Perfil)
   screens/      Pantallas de la app
   components/   Cuadrícula de boletos, tarjetas, modal de venta, resumen
@@ -192,11 +209,15 @@ vercel.json                Configuración de build para desplegar la versión we
 
 ## Notas de seguridad
 
-- La sesión es anónima (sin contraseña) porque el objetivo es que cualquier
-  estudiante entre rápido desde su celular; el código de invitación es lo
-  que protege cada rifa. No guardes información sensible de los compradores
-  más allá de nombre y WhatsApp.
+- Cada estudiante necesita una cuenta (correo/contraseña o Google) para
+  entrar — ya no es solo escribir un nombre — y el código de invitación
+  sigue siendo lo que protege cada rifa específica. No guardes información
+  sensible de los compradores más allá de nombre y WhatsApp.
 - Las reglas de Firestore permiten que solo los miembros de una rifa (los
-  que se unieron con el código) puedan leer o modificar los boletos, y que
-  solo quien creó la rifa pueda cerrarla, reabrirla o cambiar su
+  que se unieron con el código) puedan leer los boletos; solo quien vendió
+  un boleto (o quien creó la rifa) puede modificarlo después de vendido; y
+  solo quien creó la rifa puede cerrarla, reabrirla o cambiar su
   configuración.
+- Si ya habías probado la app antes con el sistema anterior (solo nombre,
+  sin cuenta), esas rifas de prueba quedaron ligadas a esa sesión anónima y
+  no las vas a poder editar con tu cuenta nueva — créalas de nuevo.

@@ -44,6 +44,7 @@ export interface Ticket {
 export interface UserProfile {
   uid: string;
   name: string;
+  email: string | null;
   createdAt: number;
 }
 

@@ -15,8 +15,8 @@ import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing } from '../theme';
 import { notify } from '../utils/alert';
 
-export default function OnboardingScreen() {
-  const { setProfileName, isFirebaseConfigured, authReady } = useAuth();
+export default function ProfileSetupScreen() {
+  const { setProfileName } = useAuth();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -35,30 +35,12 @@ export default function OnboardingScreen() {
     }
   };
 
-  if (!isFirebaseConfigured) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Falta configurar Firebase</Text>
-          <Text style={styles.subtitle}>
-            Esta app necesita un proyecto de Firebase para sincronizar las rifas entre todos los
-            vendedores. Copia el archivo .env.example a .env, llena tus credenciales y vuelve a
-            iniciar la app. Revisa el README para el paso a paso.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <Text style={styles.emoji}>🎟️</Text>
-          <Text style={styles.title}>¡Bienvenido a Rifas!</Text>
+          <Text style={styles.title}>¡Ya casi!</Text>
           <Text style={styles.subtitle}>
             Escribe tu nombre para que tus compañeros sepan qué boletos vendiste tú.
           </Text>
@@ -76,15 +58,11 @@ export default function OnboardingScreen() {
           />
 
           <TouchableOpacity
-            style={[styles.button, (!authReady || saving) && styles.buttonDisabled]}
+            style={[styles.button, saving && styles.buttonDisabled]}
             onPress={handleContinue}
-            disabled={!authReady || saving}
+            disabled={saving}
           >
-            {saving || !authReady ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Continuar</Text>
-            )}
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Continuar</Text>}
           </TouchableOpacity>
         </View>
       </SafeAreaView>

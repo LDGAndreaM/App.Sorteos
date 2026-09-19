@@ -4,9 +4,11 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
+import AuthScreen from '../screens/AuthScreen';
+import ConfigMissingScreen from '../screens/ConfigMissingScreen';
 import CreateRaffleScreen from '../screens/CreateRaffleScreen';
 import JoinRaffleScreen from '../screens/JoinRaffleScreen';
-import OnboardingScreen from '../screens/OnboardingScreen';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import RaffleDetailScreen from '../screens/RaffleDetailScreen';
 import { colors } from '../theme';
 import MainTabs from './MainTabs';
@@ -15,11 +17,19 @@ import type { RootStackParamList } from './types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { authReady, profile, profileLoading, isFirebaseConfigured } = useAuth();
+  const { authReady, user, profile, profileLoading, isFirebaseConfigured } = useAuth();
 
-  const showOnboarding = !isFirebaseConfigured || !authReady || profileLoading || !profile;
+  if (!isFirebaseConfigured) {
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="ConfigMissing" component={ConfigMissingScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
 
-  if (isFirebaseConfigured && (!authReady || profileLoading)) {
+  if (!authReady || (user && profileLoading)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -30,8 +40,10 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerTintColor: colors.primary }}>
-        {showOnboarding ? (
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+        {!user ? (
+          <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
+        ) : !profile ? (
+          <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} options={{ headerShown: false }} />
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />

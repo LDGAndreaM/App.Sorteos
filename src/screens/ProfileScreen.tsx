@@ -3,14 +3,16 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
+import { signOut } from '../services/auth';
 import { updateProfileName } from '../services/profile';
 import { colors, radius, spacing } from '../theme';
-import { notify } from '../utils/alert';
+import { confirm, notify } from '../utils/alert';
 
 export default function ProfileScreen() {
-  const { profile, uid, refreshProfile } = useAuth();
+  const { profile, user, uid, refreshProfile } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSave = async () => {
     if (!uid) return;
@@ -30,10 +32,30 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleSignOut = async () => {
+    const accepted = await confirm(
+      'Cerrar sesión',
+      '¿Seguro que quieres salir? Vas a necesitar tu correo y contraseña para volver a entrar.',
+      'Cerrar sesión',
+      { destructive: true }
+    );
+    if (!accepted) return;
+
+    setSigningOut(true);
+    try {
+      await signOut();
+    } catch (error) {
+      notify('Error', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.content}>
         <Text style={styles.title}>Mi perfil</Text>
+        {!!user?.email && <Text style={styles.email}>{user.email}</Text>}
         <Text style={styles.subtitle}>
           Este es el nombre con el que aparecerás como vendedor en tus rifas.
         </Text>
@@ -54,6 +76,14 @@ export default function ProfileScreen() {
           disabled={saving}
         >
           <Text style={styles.buttonText}>{saving ? 'Guardando…' : 'Guardar cambios'}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.signOutButton, signingOut && styles.buttonDisabled]}
+          onPress={handleSignOut}
+          disabled={signingOut}
+        >
+          <Text style={styles.signOutButtonText}>{signingOut ? 'Saliendo…' : 'Cerrar sesión'}</Text>
         </TouchableOpacity>
 
         <View style={styles.infoBox}>
@@ -80,6 +110,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.xs,
+  },
+  email: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
   },
   subtitle: {
     fontSize: 14,
@@ -115,6 +150,16 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  signOutButton: {
+    marginTop: spacing.sm,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    color: colors.danger,
+    fontSize: 15,
     fontWeight: '600',
   },
   infoBox: {
