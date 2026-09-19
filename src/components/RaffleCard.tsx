@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   codeBadge: {
-    backgroundColor: colors.availableBg,
+    backgroundColor: colors.accent,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   codeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textMuted,
+    color: colors.accentDark,
     letterSpacing: 1,
   },
   prize: {

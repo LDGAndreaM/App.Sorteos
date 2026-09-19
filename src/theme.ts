@@ -1,8 +1,16 @@
+// Brand palette, from the app's logo: a school-blue ticket with a yellow
+// stub. `primary` is a deepened version of the logo blue (kept accessible
+// for white-on-button text); `primaryLight` is the logo blue itself, for
+// softer decorative backgrounds; `accent`/`accentDark` are the logo yellow.
 export const colors = {
   background: '#F5F6FA',
   surface: '#FFFFFF',
-  primary: '#5B5FEF',
-  primaryDark: '#4245C4',
+  primary: '#4A7AA8',
+  primaryDark: '#375F82',
+  primaryLight: '#7CA6CE',
+  primaryLightBg: '#E9F0F8',
+  accent: '#F5DE8C',
+  accentDark: '#6B4E0A',
   text: '#1C1D2B',
   textMuted: '#6B6D80',
   border: '#E3E4EC',
