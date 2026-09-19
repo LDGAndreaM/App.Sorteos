@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -39,7 +40,7 @@ export default function ProfileSetupScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.emoji}>🎟️</Text>
+          <Image source={require('../../assets/icon.png')} style={styles.logo} />
           <Text style={styles.title}>¡Ya casi!</Text>
           <Text style={styles.subtitle}>
             Escribe tu nombre para que tus compañeros sepan qué boletos vendiste tú.
@@ -80,9 +81,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  emoji: {
-    fontSize: 56,
-    textAlign: 'center',
+  logo: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.lg,
+    alignSelf: 'center',
     marginBottom: spacing.md,
   },
   title: {

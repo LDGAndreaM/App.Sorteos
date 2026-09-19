@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -88,7 +89,7 @@ export default function AuthScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.emoji}>🎟️</Text>
+          <Image source={require('../../assets/icon.png')} style={styles.logo} />
           <Text style={styles.title}>¡Bienvenido a Rifas!</Text>
           <Text style={styles.subtitle}>
             {isRegister ? 'Crea tu cuenta con tu correo.' : 'Inicia sesión con tu correo.'}
@@ -194,9 +195,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
   },
-  emoji: {
-    fontSize: 56,
-    textAlign: 'center',
+  logo: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.lg,
+    alignSelf: 'center',
     marginBottom: spacing.md,
   },
   title: {
