@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -85,10 +86,16 @@ export default function RaffleDetailScreen({ route, navigation }: Props) {
   const isCreator = raffle.createdBy === uid;
   const isClosed = raffle.status === 'closed';
 
-  const handleShareCode = () => {
-    Share.share({
-      message: `Únete a mi rifa "${raffle.name}" en la app de Rifas. Código de invitación: ${raffle.inviteCode}`,
-    });
+  const handleShareCode = async () => {
+    const message = `Únete a mi rifa "${raffle.name}" en la app de Rifas. Código de invitación: ${raffle.inviteCode}`;
+    try {
+      await Share.share({ message });
+    } catch {
+      // No hay hoja para compartir disponible (típico en navegadores de escritorio):
+      // copiamos el código al portapapeles como respaldo.
+      await Clipboard.setStringAsync(raffle.inviteCode);
+      Alert.alert('Código copiado', `Se copió "${raffle.inviteCode}" al portapapeles.`);
+    }
   };
 
   const handleExport = async () => {
